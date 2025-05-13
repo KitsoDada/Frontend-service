@@ -67,7 +67,7 @@ jobs:
         fi
         echo "APP_SERVICE_NAME=$APP_SERVICE_NAME" >> $GITHUB_ENV
 
-    - name: Deploy to Azure App Service
+    - name: Deploy to Azure App Service #Deploys to app service
       run: |
         az webapp config container set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
