@@ -2,15 +2,16 @@ name: FrontendService CI/CD
 
 on:
   push:
-    branches: ["master"]
+    branches: [ "master" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 env:
   AZURE_CONTAINER_REGISTRY: ocorneracr3
-  APP_NAME: frontend-service
+  APP_NAME: frontendservice
   RESOURCE_GROUP: Online-cornerRG
   IMAGE_TAG: ${{ github.sha }}
+  DOCKERFILE_PATH: ./frontend-service/Dockerfile  # Specify path to your Dockerfile
 
 jobs:
   build-and-deploy:
@@ -36,6 +37,7 @@ jobs:
       run: |
         ACR_USERNAME=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --query "username" -o tsv)
         ACR_PASSWORD=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --query "passwords[0].value" -o tsv)
+
         echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
         echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
 
@@ -49,16 +51,26 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
-        context: .
-        file: ./Dockerfile
+        context: ./frontend-service             # Specify the context directory for the frontend-service app
+        file: ${{ env.DOCKERFILE_PATH }}       # Path to your Dockerfile
         push: true
         tags: |
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:latest
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
 
+    - name: Get App Service name
+      run: |
+        APP_SERVICE_NAME=$(az webapp list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?name=='${{ env.APP_NAME }}'].name" -o tsv)
+        if [ -z "$APP_SERVICE_NAME" ]; then
+          echo "No App Service found with the name '${{ env.APP_NAME }}'. Exiting."
+          exit 1
+        fi
+        echo "APP_SERVICE_NAME=$APP_SERVICE_NAME" >> $GITHUB_ENV
+
     - name: Deploy to Azure App Service
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.APP_NAME }}
-        resource-group: ${{ env.RESOURCE_GROUP }}
-        images: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
+      run: |
+        az webapp config container set \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --name ${{ env.APP_SERVICE_NAME }} \
+          --docker-custom-image-name ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }} \
+          --docker-registry-server-url https://${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
