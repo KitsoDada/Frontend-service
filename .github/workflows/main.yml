@@ -51,8 +51,8 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
-        context: ./frontend-service             # Specify the context directory for the frontend-service app
-        file: ${{ env.DOCKERFILE_PATH }}       # Path to your Dockerfile
+        context: ./frontend-service             
+        file: ${{ env.DOCKERFILE_PATH }}       
         push: true
         tags: |
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:latest

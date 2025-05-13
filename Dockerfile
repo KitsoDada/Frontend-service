@@ -23,4 +23,4 @@ ENV PORT 3000
 EXPOSE 3000
 
 CMD ["npm", "start"]
-#start the application
+#start the application now
