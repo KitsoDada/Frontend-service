@@ -3,8 +3,12 @@ name: FrontendService CI/CD
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - 'frontend-service/**'  # Watch for changes inside the frontend-service directory
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'frontend-service/**'  # Watch for pull requests that modify frontend-service
 
 env:
   AZURE_CONTAINER_REGISTRY: ocorneracr3
@@ -67,7 +71,7 @@ jobs:
         fi
         echo "APP_SERVICE_NAME=$APP_SERVICE_NAME" >> $GITHUB_ENV
 
-    - name: Deploy to Azure App Service #Deploys to app service
+    - name: Deploy to Azure App Service
       run: |
         az webapp config container set \
           --resource-group ${{ env.RESOURCE_GROUP }} \
