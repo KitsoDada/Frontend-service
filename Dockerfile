@@ -14,8 +14,12 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/dist ./dist
+# Copy the Next.js build output from the builder stage
+COPY --from=builder /app/.next ./.next
+
+# Copy package.json and package-lock.json to install production dependencies
 COPY --from=builder /app/package*.json ./
+
 RUN npm install --only=production
 
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]
