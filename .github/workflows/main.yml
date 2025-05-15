@@ -11,7 +11,7 @@ env:
   APP_NAME: frontendservice
   RESOURCE_GROUP: Online-cornerRG
   IMAGE_TAG: ${{ github.sha }}
-  DOCKERFILE_PATH: ./frontend-service/Dockerfile
+  DOCKERFILE_PATH: Dockerfile
 
 jobs:
   build-and-deploy:
