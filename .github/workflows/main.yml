@@ -76,5 +76,13 @@ jobs:
           --name ${{ env.APP_NAME }} \
           --query "state" -o tsv)
         echo "WebApp status: $DEPLOYMENT_STATUS"
-        
-        curl -s -o /dev/null -w "%{http_code}" https://${{ env.APP_NAME }}.azurewebsites.net | grep -q 200
+
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.APP_NAME }}.azurewebsites.net)
+
+        if [ "$HTTP_CODE" -eq 200 ]; then
+          echo "Site is up and returned HTTP 200"
+        else
+          echo "Site returned HTTP $HTTP_CODE"
+          # If you want to fail the step uncomment below:
+          # exit 1
+        fi
