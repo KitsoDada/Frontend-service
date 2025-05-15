@@ -2,13 +2,9 @@ name: FrontendService CI/CD
 
 on:
   push:
-    branches: [ "main" ]  # Changed from master to main
-    paths:
-      - 'frontend-service/**'
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'frontend-service/**'
 
 env:
   AZURE_CONTAINER_REGISTRY: ocorneracr3
