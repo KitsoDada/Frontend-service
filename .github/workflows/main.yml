@@ -4,18 +4,18 @@ on:
   push:
     branches: [ "master" ]
     paths:
-      - 'frontend-service/**'  # Watch for changes inside the frontend-service directory
+      - 'frontend-service/**'
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'frontend-service/**'  # Watch for pull requests that modify frontend-service
+      - 'frontend-service/**'
 
 env:
   AZURE_CONTAINER_REGISTRY: ocorneracr3
   APP_NAME: frontendservice
   RESOURCE_GROUP: Online-cornerRG
   IMAGE_TAG: ${{ github.sha }}
-  DOCKERFILE_PATH: ./frontend-service/Dockerfile  # Specify path to your Dockerfile
+  DOCKERFILE_PATH: ./frontend-service/Dockerfile
 
 jobs:
   build-and-deploy:
@@ -37,44 +37,36 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Get ACR credentials dynamically
-      run: |
-        ACR_USERNAME=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --query "username" -o tsv)
-        ACR_PASSWORD=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --query "passwords[0].value" -o tsv)
-
-        echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
-        echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
-
     - name: Login to ACR
-      uses: docker/login-action@v2
+      uses: azure/docker-login@v1
       with:
-        registry: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
-        username: ${{ env.ACR_USERNAME }}
-        password: ${{ env.ACR_PASSWORD }}
+        login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
-        context: ./frontend-service             
-        file: ${{ env.DOCKERFILE_PATH }}       
+        context: ./frontend-service
+        file: ${{ env.DOCKERFILE_PATH }}
         push: true
         tags: |
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:latest
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
-
-    - name: Get App Service name
-      run: |
-        APP_SERVICE_NAME=$(az webapp list --resource-group ${{ env.RESOURCE_GROUP }} --query "[?name=='${{ env.APP_NAME }}'].name" -o tsv)
-        if [ -z "$APP_SERVICE_NAME" ]; then
-          echo "No App Service found with the name '${{ env.APP_NAME }}'. Exiting."
-          exit 1
-        fi
-        echo "APP_SERVICE_NAME=$APP_SERVICE_NAME" >> $GITHUB_ENV
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.APP_NAME }}
+        images: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
+        resource-group: ${{ env.RESOURCE_GROUP }}
+
+    - name: Verify deployment
       run: |
-        az webapp config container set \
+        DEPLOYMENT_STATUS=$(az webapp deployment list-publishing-credentials \
           --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.APP_SERVICE_NAME }} \
-          --docker-custom-image-name ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }} \
-          --docker-registry-server-url https://${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+          --name ${{ env.APP_NAME }} \
+          --query "scmUri" -o tsv)
+        echo "Deployment endpoint: $DEPLOYMENT_STATUS"
