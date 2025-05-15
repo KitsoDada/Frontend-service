@@ -2,7 +2,7 @@ name: FrontendService CI/CD
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]  # Changed from master to main
     paths:
       - 'frontend-service/**'
   pull_request:
@@ -55,6 +55,8 @@ jobs:
           ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          NODE_ENV=production
 
     - name: Deploy to Azure App Service
       uses: azure/webapps-deploy@v2
@@ -62,11 +64,14 @@ jobs:
         app-name: ${{ env.APP_NAME }}
         images: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
         resource-group: ${{ env.RESOURCE_GROUP }}
+        slot-name: production
 
     - name: Verify deployment
       run: |
-        DEPLOYMENT_STATUS=$(az webapp deployment list-publishing-credentials \
+        DEPLOYMENT_STATUS=$(az webapp show \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --name ${{ env.APP_NAME }} \
-          --query "scmUri" -o tsv)
-        echo "Deployment endpoint: $DEPLOYMENT_STATUS"
+          --query "state" -o tsv)
+        echo "WebApp status: $DEPLOYMENT_STATUS"
+        
+        curl -s -o /dev/null -w "%{http_code}" https://${{ env.APP_NAME }}.azurewebsites.net | grep -q 200
