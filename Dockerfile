@@ -1,22 +1,24 @@
-# Stage 1: Build the app
+# Stage 1: Build the React app
 FROM node:22-alpine AS builder
 
-# Set working directory
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies (including devDependencies)
 RUN npm install --include=dev
-
-# Copy source code
 COPY . .
-
-# Build the app
 RUN npm run build
 
-# Stage 2: Serve the app with Nginx
-FROM nginx:alpine
-COPY --from=builder /app/build /usr/share/nginx/html
+# Stage 2: Serve with Express
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install only production dependencies
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# Copy server and build output
+COPY server.js .
+COPY --from=builder /app/build ./build
+
 EXPOSE 80
+CMD ["node", "server.js"]
